@@ -1,0 +1,115 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enterprise-monitoring-backend"
+version = "1.0.0"
+description = "Enterprise IT Infrastructure Monitoring System Backend"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Enterprise Monitoring Team", email = "team@enterprise-monitoring.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "websockets>=12.0",
+    "python-multipart>=0.0.6",
+    "asyncpg>=0.29.0",
+    "psycopg2-binary>=2.9.9",
+    "redis>=5.0.1",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-decouple>=3.8",
+    "cryptography>=41.0.7",
+    "pandas>=2.1.0",
+    "numpy>=1.25.0",
+    "scikit-learn>=1.3.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "httpx>=0.25.0",
+    "aiohttp>=3.9.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.11.0",
+    "isort>=5.12.0",
+    "flake8>=6.1.0",
+    "mypy>=1.7.0",
+    "pytest-cov>=4.1.0",
+]
+ml = [
+    "xgboost>=2.0.0",
+    "torch>=2.1.0",
+    "transformers>=4.35.0",
+    "mlflow>=2.8.0",
+    "onnxruntime>=1.16.0",
+    "shap>=0.44.0",
+    "pyod>=1.1.0",
+    "statsmodels>=0.14.0",
+    "prophet>=1.1.0",
+    "networkx>=3.2.0",
+    "torch-geometric>=2.4.0",
+    "dgl>=1.1.0",
+]
+full = [
+    "influxdb-client>=1.38.0",
+    "elasticsearch[async]>=8.11.0",
+    "kafka-python>=2.0.0",
+    "confluent-kafka>=2.3.0",
+    "pyspark>=3.5.0",
+    "prometheus-client>=0.19.0",
+    "structlog>=23.2.0",
+    "sentry-sdk[fastapi]>=1.38.0",
+    "python-docx>=1.1.0",
+    "reportlab>=4.0.0",
+    "openpyxl>=3.1.0",
+    "kubernetes>=28.1.0",
+    "stix2>=3.0.0",
+    "taxii2-client>=2.3.0",
+    "pybreaker>=1.0.1",
+]
+
+[project.scripts]
+monitoring-backend = "app.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311', 'py312']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short" 
