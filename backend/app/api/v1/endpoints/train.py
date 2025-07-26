@@ -1,8 +1,13 @@
+"""
+API endpoints for triggering, monitoring, and validating ML model training.
+Supports background retraining, status/history queries, and synthetic data generation for demonstration.
+"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 import structlog
 from datetime import datetime
+import asyncio
 
 from app.core.security import require_admin
 from app.services.ml_pipeline import MLPipeline

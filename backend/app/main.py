@@ -1,3 +1,7 @@
+"""
+Main entry point for the SecurityAI Backend FastAPI application.
+Initializes core services, configures middleware, and sets up API routes and error handlers.
+"""
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware

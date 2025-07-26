@@ -1,3 +1,7 @@
+"""
+Monitoring and metrics collection using Prometheus for HTTP requests, ML inference, alerts, database queries, and WebSocket connections.
+Provides middleware and utility functions for recording and exposing metrics.
+"""
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Request, Response
 import time

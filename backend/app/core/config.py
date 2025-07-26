@@ -1,8 +1,11 @@
 from pydantic_settings import BaseSettings
 from typing import List, Optional
-import os
 
 class Settings(BaseSettings):
+    """
+    Application configuration settings, loaded from environment variables or defaults.
+    Organized by category: server, security, database, ML, monitoring, etc.
+    """
     # Application
     APP_NAME: str = "SecurityAI Backend"
     VERSION: str = "1.0.0"
@@ -92,6 +95,9 @@ class Settings(BaseSettings):
     # Circuit Breaker
     CIRCUIT_BREAKER_FAILURE_THRESHOLD: int = 5
     CIRCUIT_BREAKER_RECOVERY_TIMEOUT: int = 60
+    
+    # Gemini Integration
+    USE_GEMINI_FOR_LOGS: bool = True
     
     class Config:
         env_file = ".env"

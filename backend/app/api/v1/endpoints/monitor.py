@@ -1,6 +1,10 @@
+"""
+API endpoints for real-time monitoring, event ingestion, metrics, and system health.
+Includes WebSocket support for live updates and endpoints for querying and creating monitoring data.
+"""
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import json
 import asyncio
 import structlog
@@ -116,7 +120,7 @@ async def get_monitoring_status(current_user = Depends(get_current_user)):
 @router.get("/metrics")
 async def get_monitoring_metrics(
     time_range: str = "1h",
-    asset_id: str = None,
+    asset_id: Optional[str] = None,
     current_user = Depends(get_current_user)
 ):
     """Get monitoring metrics for the specified time range"""
@@ -130,44 +134,38 @@ async def get_monitoring_metrics(
             start_time = end_time - timedelta(days=7)
         else:
             start_time = end_time - timedelta(hours=1)
-        
         # Query events from InfluxDB
         events = await query_events_from_influxdb(
             start_time.isoformat(),
             end_time.isoformat(),
-            asset_id
+            asset_id if asset_id is not None else None
         )
-        
-        # Process events into metrics
         metrics = {
-            "total_events": len(events),
+            "total_events": 0,
             "event_types": {},
             "severity_distribution": {},
             "top_assets": {},
             "time_series": []
         }
-        
-        for event in events:
-            event_type = event.get("event_type", "unknown")
-            severity = event.get("severity", "info")
-            asset = event.get("asset_id", "unknown")
-            
-            # Count event types
+        # If events is a list of FluxTable, flatten to FluxRecord
+        flat_events = []
+        for table in events:
+            for record in getattr(table, 'records', []):
+                flat_events.append(record)
+        metrics["total_events"] = len(flat_events)
+        for event in flat_events:
+            event_type = getattr(event, 'event_type', 'unknown')
+            severity = getattr(event, 'severity', 'info')
+            asset = getattr(event, 'asset_id', 'unknown')
             metrics["event_types"][event_type] = metrics["event_types"].get(event_type, 0) + 1
-            
-            # Count severity levels
             metrics["severity_distribution"][severity] = metrics["severity_distribution"].get(severity, 0) + 1
-            
-            # Count top assets
             metrics["top_assets"][asset] = metrics["top_assets"].get(asset, 0) + 1
-        
         return {
             "metrics": metrics,
             "time_range": time_range,
             "asset_id": asset_id,
             "timestamp": datetime.utcnow().isoformat()
         }
-        
     except Exception as e:
         logger.error("Failed to get monitoring metrics", error=str(e))
         raise HTTPException(
@@ -178,35 +176,34 @@ async def get_monitoring_metrics(
 @router.get("/events")
 async def get_events(
     limit: int = 100,
-    event_type: str = None,
-    severity: str = None,
-    asset_id: str = None,
+    event_type: Optional[str] = None,
+    severity: Optional[str] = None,
+    asset_id: Optional[str] = None,
     current_user = Depends(get_current_user)
 ):
     """Get recent security events"""
     try:
-        # Query events from InfluxDB with filters
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(hours=24)
-        
         events = await query_events_from_influxdb(
             start_time.isoformat(),
             end_time.isoformat(),
-            asset_id
+            asset_id if asset_id is not None else None
         )
-        
-        # Apply filters
         filtered_events = []
-        for event in events:
-            if event_type and event.get("event_type") != event_type:
+        flat_events = []
+        for table in events:
+            for record in getattr(table, 'records', []):
+                flat_events.append(record)
+        for event in flat_events:
+            if event_type and getattr(event, 'event_type', None) != event_type:
                 continue
-            if severity and event.get("severity") != severity:
+            if severity and getattr(event, 'severity', None) != severity:
                 continue
-            filtered_events.append(event)
-        
-        # Limit results
+            # Convert to dict for output
+            event_dict = {k: getattr(event, k, None) for k in dir(event) if not k.startswith('_') and not callable(getattr(event, k))}
+            filtered_events.append(event_dict)
         filtered_events = filtered_events[:limit]
-        
         return {
             "events": filtered_events,
             "total": len(filtered_events),
@@ -217,7 +214,6 @@ async def get_events(
                 "asset_id": asset_id
             }
         }
-        
     except Exception as e:
         logger.error("Failed to get events", error=str(e))
         raise HTTPException(

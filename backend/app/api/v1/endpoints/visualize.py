@@ -1,3 +1,7 @@
+"""
+API endpoints for security visualization: attack paths, network topology, threat maps, user behavior, and data flow.
+Provides graph and map data for frontend dashboards and analytics.
+"""
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional, Dict, Any
 import structlog
@@ -13,8 +17,8 @@ router = APIRouter()
 
 @router.get("/attack-paths")
 async def get_attack_paths(
-    risk_level: Optional[str] = Query(None, regex="^(low|medium|high|critical)$"),
-    time_range: str = Query("24h", regex="^(1h|24h|7d|30d)$"),
+    risk_level: Optional[str] = Query(None, pattern="^(low|medium|high|critical)$"),
+    time_range: str = Query("24h", pattern="^(1h|24h|7d|30d)$"),
     current_user = Depends(get_current_user)
 ):
     """Generate attack path graph data for visualization"""
@@ -224,7 +228,7 @@ async def get_network_topology(current_user = Depends(get_current_user)):
 
 @router.get("/threat-map")
 async def get_threat_map(
-    time_range: str = Query("24h", regex="^(1h|24h|7d|30d)$"),
+    time_range: str = Query("24h", pattern="^(1h|24h|7d|30d)$"),
     current_user = Depends(get_current_user)
 ):
     """Get threat map data showing threat distribution"""
@@ -323,7 +327,7 @@ async def get_threat_map(
 @router.get("/user-behavior")
 async def get_user_behavior(
     user_id: Optional[str] = None,
-    time_range: str = Query("7d", regex="^(1d|7d|30d)$"),
+    time_range: str = Query("7d", pattern="^(1d|7d|30d)$"),
     current_user = Depends(get_current_user)
 ):
     """Get user behavior analysis data"""

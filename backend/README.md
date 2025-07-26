@@ -48,12 +48,14 @@ Enterprise-grade IT infrastructure monitoring and threat detection backend syste
 ### Quick Start (Recommended)
 
 #### Windows
+
 ```bash
 # Run the Windows installation script
 install.bat
 ```
 
 #### Linux/macOS
+
 ```bash
 # Run the Python installation script
 python install.py
@@ -62,18 +64,21 @@ python install.py
 ### Manual Installation
 
 #### 1. **Clone the repository**
+
 ```bash
 git clone <repository-url>
 cd backend
 ```
 
 #### 2. **Create virtual environment**
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 #### 3. **Upgrade pip and setuptools**
+
 ```bash
 python -m pip install --upgrade pip setuptools wheel
 ```
@@ -81,16 +86,19 @@ python -m pip install --upgrade pip setuptools wheel
 #### 4. **Install dependencies**
 
 **Option A: Minimal setup (recommended for testing)**
+
 ```bash
 pip install -r requirements-minimal.txt
 ```
 
 **Option B: Full setup with all features**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 **Option C: Install with extras**
+
 ```bash
 # Core + Development tools
 pip install -e .[dev]
@@ -103,17 +111,22 @@ pip install -e .[full]
 ```
 
 #### 5. **Set up environment variables**
+
 ```bash
 # The installation script will create a sample .env file
 # Edit .env with your configuration
 ```
 
 #### 6. **Start development services**
+
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+# Use the main docker-compose.yml for development
+# (docker-compose.dev.yml does not exist)
+docker-compose up -d
 ```
 
 #### 7. **Run the application**
+
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -123,19 +136,23 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 #### Common Issues
 
 1. **setuptools import error**
+
    ```bash
    python -m pip install --upgrade setuptools wheel
    ```
 
 2. **Python version compatibility**
+
    - Ensure you're using Python 3.11 or higher
    - Check with: `python --version`
 
 3. **Dependency conflicts**
+
    - Use the minimal requirements first: `pip install -r requirements-minimal.txt`
    - Then add optional dependencies as needed
 
 4. **Windows-specific issues**
+
    - Use the `install.bat` script
    - Ensure Visual C++ build tools are installed for some packages
 
@@ -146,6 +163,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ### Production Deployment
 
 1. **Build Docker image**
+
    ```bash
    docker build -t securityai/backend:latest .
    ```
@@ -159,19 +177,20 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ENVIRONMENT` | Environment (development/production) | `development` |
-| `SECRET_KEY` | JWT secret key | `your-secret-key-change-in-production` |
-| `POSTGRES_URL` | PostgreSQL connection string | `postgresql://user:pass@localhost/db` |
-| `INFLUXDB_TOKEN` | InfluxDB API token | `your-influxdb-token` |
-| `ELASTICSEARCH_URL` | Elasticsearch URL | `http://localhost:9200` |
-| `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
-| `KAFKA_BOOTSTRAP_SERVERS` | Kafka servers | `localhost:9092` |
+| Variable                  | Description                          | Default                                |
+| ------------------------- | ------------------------------------ | -------------------------------------- |
+| `ENVIRONMENT`             | Environment (development/production) | `development`                          |
+| `SECRET_KEY`              | JWT secret key                       | `your-secret-key-change-in-production` |
+| `POSTGRES_URL`            | PostgreSQL connection string         | `postgresql://user:pass@localhost/db`  |
+| `INFLUXDB_TOKEN`          | InfluxDB API token                   | `your-influxdb-token`                  |
+| `ELASTICSEARCH_URL`       | Elasticsearch URL                    | `http://localhost:9200`                |
+| `REDIS_URL`               | Redis connection string              | `redis://localhost:6379`               |
+| `KAFKA_BOOTSTRAP_SERVERS` | Kafka servers                        | `localhost:9092`                       |
 
 ### Database Setup
 
 1. **PostgreSQL**
+
    ```sql
    CREATE DATABASE securityai;
    CREATE USER securityai WITH PASSWORD 'your-password';
@@ -179,6 +198,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
 2. **InfluxDB**
+
    ```bash
    # Create organization and bucket
    influx org create -n securityai
@@ -203,12 +223,14 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ## 📡 API Endpoints
 
 ### Authentication
+
 - `POST /api/v1/auth/login` - User login
 - `POST /api/v1/auth/refresh` - Refresh access token
 - `POST /api/v1/auth/logout` - User logout
 - `GET /api/v1/auth/me` - Get current user info
 
 ### Monitoring
+
 - `GET /api/v1/monitor/status` - System status
 - `GET /api/v1/monitor/metrics` - System metrics
 - `GET /api/v1/monitor/events` - Get events
@@ -216,6 +238,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `WebSocket /api/v1/monitor/ws` - Real-time streaming
 
 ### Alerts
+
 - `GET /api/v1/alerts` - Get alerts
 - `POST /api/v1/alerts` - Create alert
 - `GET /api/v1/alerts/{id}` - Get alert details
@@ -223,22 +246,26 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `POST /api/v1/alerts/{id}/remediate` - Execute remediation
 
 ### Visualization
+
 - `GET /api/v1/visualize/attack-paths` - Get attack paths
 - `GET /api/v1/visualize/network-topology` - Get network topology
 - `GET /api/v1/visualize/threat-map` - Get threat map
 - `GET /api/v1/visualize/user-behavior` - Get user behavior
 
 ### Reports
+
 - `POST /api/v1/reports/generate` - Generate report
 - `GET /api/v1/reports/{id}` - Download report
 - `GET /api/v1/reports` - List reports
 
 ### ML Training
+
 - `POST /api/v1/train` - Trigger model training (admin)
 - `GET /api/v1/train/status/{id}` - Get training status
 - `GET /api/v1/train/history` - Get training history
 
 ### Metrics
+
 - `GET /api/v1/metrics` - Get all metrics
 - `GET /api/v1/metrics/ml` - Get ML metrics
 - `GET /api/v1/metrics/system` - Get system metrics
@@ -249,16 +276,19 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ### Models
 
 1. **Anomaly Detection (Isolation Forest)**
+
    - Detects unusual patterns in security events
    - Features: bytes_transferred, login_attempts, duration, event_type
    - Output: anomaly_score (0-1)
 
 2. **Threat Classification (Random Forest)**
+
    - Classifies events as benign/suspicious/malicious
    - Features: network metrics, user behavior, system activity
    - Output: classification with confidence score
 
 3. **Log Parser (DistilBERT)**
+
    - Extracts structured data from log messages
    - Features: log message text
    - Output: entities (IP, user, action, etc.)
@@ -344,7 +374,7 @@ curl http://localhost:8000/health
 
 ```yaml
 # docker-compose.dev.yml
-version: '3.8'
+version: "3.8"
 services:
   backend:
     build: .
@@ -507,11 +537,13 @@ pre-commit run --all-files
 ### Adding New Features
 
 1. **Create feature branch**
+
    ```bash
    git checkout -b feature/new-feature
    ```
 
 2. **Implement feature**
+
    - Add tests
    - Update documentation
    - Follow code style guidelines
@@ -526,28 +558,31 @@ pre-commit run --all-files
 ### Common Issues
 
 1. **Database Connection Errors**
+
    ```bash
    # Check database status
    docker-compose ps
-   
+
    # Check logs
    docker-compose logs postgres
    ```
 
 2. **ML Model Loading Issues**
+
    ```bash
    # Check model files
    ls -la models/
-   
+
    # Retrain models
    curl -X POST "http://localhost:8000/api/v1/train"
    ```
 
 3. **Memory Issues**
+
    ```bash
    # Check memory usage
    docker stats
-   
+
    # Increase memory limits in docker-compose.yml
    ```
 
@@ -567,6 +602,7 @@ tail -f logs/app.log | jq
 ## 📚 API Documentation
 
 Interactive API documentation is available at:
+
 - **Swagger UI**: `http://localhost:8000/docs`
 - **ReDoc**: `http://localhost:8000/redoc`
 
@@ -592,21 +628,25 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🗺️ Roadmap
 
 ### Q1 2025
+
 - [ ] Advanced threat hunting capabilities
 - [ ] Integration with more threat intelligence feeds
 - [ ] Enhanced ML model explainability
 
 ### Q2 2025
+
 - [ ] Zero-trust architecture implementation
 - [ ] Advanced compliance reporting
 - [ ] Machine learning model marketplace
 
 ### Q3 2025
+
 - [ ] Multi-tenant architecture
 - [ ] Advanced automation and orchestration
 - [ ] Integration with cloud-native security tools
 
 ### Q4 2025
+
 - [ ] AI-powered threat prediction
 - [ ] Advanced behavioral analytics
-- [ ] Global threat intelligence sharing 
+- [ ] Global threat intelligence sharing

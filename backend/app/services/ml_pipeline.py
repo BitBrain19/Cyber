@@ -5,39 +5,31 @@ from typing import Dict, List, Any, Optional
 import structlog
 from datetime import datetime, timedelta
 import joblib
-import onnxruntime as ort
 from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 import torch
-import torch.nn as nn
 from transformers import DistilBertTokenizer, DistilBertModel
 import networkx as nx
 from pyod.models.iforest import IForest
-import mlflow
-import mlflow.sklearn
-import shap
 
 from app.core.config import settings
 from app.core.database import get_redis_client, cache_data, get_cached_data
+from app.services.gemini_client import parse_log_with_gemini
 
 logger = structlog.get_logger()
 
 class AnomalyDetector:
-    """Isolation Forest based anomaly detector"""
-    
+    """Isolation Forest based anomaly detector."""
     def __init__(self):
         self.model = None
         self.scaler = StandardScaler()
         self.is_trained = False
-        
+
     async def train(self, data: pd.DataFrame):
-        """Train the anomaly detection model"""
+        """Train the anomaly detection model."""
         try:
-            # Prepare features
             features = self._extract_features(data)
             features_scaled = self.scaler.fit_transform(features)
-            
-            # Train isolation forest
             self.model = IForest(
                 contamination=0.1,
                 random_state=42,
@@ -45,54 +37,52 @@ class AnomalyDetector:
             )
             self.model.fit(features_scaled)
             self.is_trained = True
-            
             logger.info("Anomaly detection model trained successfully")
-            
         except Exception as e:
             logger.error("Failed to train anomaly detection model", error=str(e))
             raise
-    
+
     def predict(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Predict anomaly score for an event"""
-        if not self.is_trained:
+        """Predict anomaly score for an event."""
+        if not self.is_trained or self.model is None:
             return {"anomaly_score": 0.0, "is_anomaly": False}
-        
         try:
             features = self._extract_single_event_features(data)
             features_scaled = self.scaler.transform([features])
-            
-            # Get anomaly score
-            score = self.model.decision_function(features_scaled)[0]
-            is_anomaly = score > 0.5  # Threshold can be tuned
-            
+            if self.model is None:
+                return {"anomaly_score": 0.0, "is_anomaly": False}
+            score = self.model.decision_function(features_scaled)
+            if score is not None and hasattr(score, '__getitem__'):
+                score_value = score[0]
+            else:
+                logger.warning('Anomaly detector decision_function returned None or non-subscriptable')
+                score_value = 0.0
+            is_anomaly = score_value > 0.5
             return {
-                "anomaly_score": float(score),
+                "anomaly_score": float(score_value),
                 "is_anomaly": bool(is_anomaly),
                 "threshold": 0.5
             }
-            
         except Exception as e:
             logger.error("Failed to predict anomaly", error=str(e))
             return {"anomaly_score": 0.0, "is_anomaly": False}
-    
+
     def _extract_features(self, data: pd.DataFrame) -> np.ndarray:
-        """Extract features from training data"""
-        # This is a simplified feature extraction
-        # In production, you would have more sophisticated feature engineering
-        features = []
-        for _, row in data.iterrows():
-            feature_vector = [
+        """Extract features from training data."""
+        features = [
+            [
                 row.get('bytes_transferred', 0),
                 row.get('login_attempts', 0),
                 row.get('duration', 0),
                 hash(row.get('event_type', '')) % 1000,
                 hash(row.get('source_ip', '')) % 1000
             ]
-            features.append(feature_vector)
+            for _, row in data.iterrows()
+        ]
         return np.array(features)
-    
+
     def _extract_single_event_features(self, data: Dict[str, Any]) -> List[float]:
-        """Extract features from a single event"""
+        """Extract features from a single event."""
         return [
             data.get('bytes_transferred', 0),
             data.get('login_attempts', 0),
@@ -102,24 +92,19 @@ class AnomalyDetector:
         ]
 
 class ThreatClassifier:
-    """Random Forest based threat classifier"""
-    
+    """Random Forest based threat classifier."""
     def __init__(self):
         self.model = None
         self.scaler = StandardScaler()
         self.classes = ['benign', 'suspicious', 'malicious']
         self.is_trained = False
-        
+
     async def train(self, data: pd.DataFrame):
-        """Train the threat classification model"""
+        """Train the threat classification model."""
         try:
-            # Prepare features and labels
             features = self._extract_features(data)
             labels = data['threat_label'].values
-            
             features_scaled = self.scaler.fit_transform(features)
-            
-            # Train random forest
             self.model = RandomForestClassifier(
                 n_estimators=100,
                 random_state=42,
@@ -127,27 +112,21 @@ class ThreatClassifier:
             )
             self.model.fit(features_scaled, labels)
             self.is_trained = True
-            
             logger.info("Threat classification model trained successfully")
-            
         except Exception as e:
             logger.error("Failed to train threat classification model", error=str(e))
             raise
-    
+
     def predict(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Predict threat classification for an event"""
-        if not self.is_trained:
+        """Predict threat classification for an event."""
+        if not self.is_trained or self.model is None:
             return {"classification": "benign", "confidence": 0.0}
-        
         try:
             features = self._extract_single_event_features(data)
             features_scaled = self.scaler.transform([features])
-            
-            # Get prediction and probability
             prediction = self.model.predict(features_scaled)[0]
             probabilities = self.model.predict_proba(features_scaled)[0]
             confidence = max(probabilities)
-            
             return {
                 "classification": prediction,
                 "confidence": float(confidence),
@@ -155,16 +134,14 @@ class ThreatClassifier:
                     cls: float(prob) for cls, prob in zip(self.classes, probabilities)
                 }
             }
-            
         except Exception as e:
             logger.error("Failed to predict threat classification", error=str(e))
             return {"classification": "benign", "confidence": 0.0}
-    
+
     def _extract_features(self, data: pd.DataFrame) -> np.ndarray:
-        """Extract features from training data"""
-        features = []
-        for _, row in data.iterrows():
-            feature_vector = [
+        """Extract features from training data."""
+        features = [
+            [
                 row.get('bytes_transferred', 0),
                 row.get('login_attempts', 0),
                 row.get('duration', 0),
@@ -173,11 +150,12 @@ class ThreatClassifier:
                 row.get('destination_port', 0),
                 row.get('protocol', 0)
             ]
-            features.append(feature_vector)
+            for _, row in data.iterrows()
+        ]
         return np.array(features)
-    
+
     def _extract_single_event_features(self, data: Dict[str, Any]) -> List[float]:
-        """Extract features from a single event"""
+        """Extract features from a single event."""
         return [
             data.get('bytes_transferred', 0),
             data.get('login_attempts', 0),
@@ -189,33 +167,33 @@ class ThreatClassifier:
         ]
 
 class LogParser:
-    """NLP-based log parser using DistilBERT"""
-    
+    """NLP-based log parser using DistilBERT and optionally Gemini API."""
     def __init__(self):
         self.tokenizer = None
         self.model = None
         self.is_loaded = False
-        
+        self.use_gemini = settings.USE_GEMINI_FOR_LOGS
+
     async def load_model(self):
-        """Load the pre-trained DistilBERT model"""
+        """Load the pre-trained DistilBERT model."""
         try:
             self.tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
             self.model = DistilBertModel.from_pretrained('distilbert-base-uncased')
             self.is_loaded = True
-            
             logger.info("Log parser model loaded successfully")
-            
         except Exception as e:
             logger.error("Failed to load log parser model", error=str(e))
             raise
-    
+
     def parse_log(self, log_message: str) -> Dict[str, Any]:
-        """Parse log message and extract entities"""
-        if not self.is_loaded:
-            return {"entities": {}, "confidence": 0.0}
-        
+        """Parse log message and extract entities using Gemini if enabled, else local model."""
+        if self.use_gemini:
+            gemini_result = parse_log_with_gemini(log_message)
+            if gemini_result is not None:
+                return {"source": "gemini", **gemini_result}
+        if not self.is_loaded or self.tokenizer is None or self.model is None:
+            return {"entities": {}, "confidence": 0.0, "source": "local"}
         try:
-            # Tokenize the log message
             inputs = self.tokenizer(
                 log_message,
                 return_tensors="pt",
@@ -223,50 +201,48 @@ class LogParser:
                 max_length=512,
                 padding=True
             )
-            
-            # Get embeddings
             with torch.no_grad():
-                outputs = self.model(**inputs)
-                embeddings = outputs.last_hidden_state.mean(dim=1)
-            
-            # Extract entities using simple pattern matching
-            # In production, you would use a more sophisticated NER model
+                outputs = self.model.forward(**inputs)
+            # HuggingFace models may return a tuple or an object with .last_hidden_state
+            if outputs is not None:
+                if not isinstance(outputs, tuple) and hasattr(outputs, 'last_hidden_state') and outputs.last_hidden_state is not None:
+                    embeddings = outputs.last_hidden_state.mean(dim=1)
+                elif isinstance(outputs, tuple) and len(outputs) > 0:
+                    embeddings = outputs[0].mean(dim=1)
+                else:
+                    logger.warning('Model output is missing last_hidden_state or tensor')
+                    embeddings = None
+            else:
+                logger.warning('Model output is None')
+                embeddings = None
             entities = self._extract_entities(log_message)
-            
             return {
                 "entities": entities,
-                "confidence": 0.85,  # Mock confidence score
-                "embedding": embeddings.numpy().tolist()
+                "confidence": 0.85,
+                "embedding": embeddings.numpy().tolist() if embeddings is not None else None,
+                "source": "local"
             }
-            
         except Exception as e:
             logger.error("Failed to parse log", error=str(e))
-            return {"entities": {}, "confidence": 0.0}
-    
+            return {"entities": {}, "confidence": 0.0, "source": "local"}
+
     def _extract_entities(self, log_message: str) -> Dict[str, str]:
-        """Extract entities from log message using pattern matching"""
-        entities = {}
-        
-        # Extract IP addresses
+        """Extract entities from log message using pattern matching."""
         import re
+        entities = {}
         ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
         ips = re.findall(ip_pattern, log_message)
         if ips:
             entities['ip'] = ips[0]
-        
-        # Extract actions
         action_keywords = ['login', 'logout', 'access', 'denied', 'blocked', 'failed']
         for keyword in action_keywords:
             if keyword in log_message.lower():
                 entities['action'] = keyword
                 break
-        
-        # Extract user names
         user_pattern = r'user[:\s]+([a-zA-Z0-9_]+)'
         user_match = re.search(user_pattern, log_message, re.IGNORECASE)
         if user_match:
             entities['user'] = user_match.group(1)
-        
         return entities
 
 class GraphAnalyzer:

@@ -1,3 +1,7 @@
+"""
+API endpoints for generating, listing, and downloading compliance and security reports.
+Supports multiple formats and report types, with helper functions for data aggregation and file output.
+"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel

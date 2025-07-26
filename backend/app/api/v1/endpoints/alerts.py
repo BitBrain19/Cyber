@@ -1,3 +1,7 @@
+"""
+API endpoints for managing and querying security alerts.
+Supports filtering, summary statistics, details, status updates, remediation, and creation of alerts.
+"""
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional, Dict, Any
 import structlog
@@ -13,8 +17,8 @@ router = APIRouter()
 @router.get("/")
 async def get_alerts(
     limit: int = Query(100, ge=1, le=1000),
-    severity: Optional[str] = Query(None, regex="^(critical|high|medium|low)$"),
-    status: Optional[str] = Query(None, regex="^(active|investigating|resolved)$"),
+    severity: Optional[str] = Query(None, pattern="^(critical|high|medium|low)$"),
+    alert_status: Optional[str] = Query(None, pattern="^(active|investigating|resolved)$"),
     category: Optional[str] = None,
     asset_id: Optional[str] = None,
     current_user = Depends(get_current_user)
@@ -22,7 +26,7 @@ async def get_alerts(
     """Get prioritized alerts with filtering options"""
     try:
         # Check cache first
-        cache_key = f"alerts:{limit}:{severity}:{status}:{category}:{asset_id}"
+        cache_key = f"alerts:{limit}:{severity}:{alert_status}:{category}:{asset_id}"
         cached_result = await get_cached_data(cache_key)
         if cached_result:
             return cached_result
@@ -43,9 +47,9 @@ async def get_alerts(
                 query += " AND severity = $1"
                 params.append(severity)
             
-            if status:
+            if alert_status:
                 query += f" AND status = ${len(params) + 1}"
-                params.append(status)
+                params.append(alert_status)
             
             if category:
                 query += f" AND category = ${len(params) + 1}"
@@ -83,7 +87,7 @@ async def get_alerts(
             "total": len(formatted_alerts),
             "filters": {
                 "severity": severity,
-                "status": status,
+                "status": alert_status,
                 "category": category,
                 "asset_id": asset_id
             }

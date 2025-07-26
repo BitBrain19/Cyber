@@ -1,3 +1,7 @@
+"""
+API endpoints for authentication and user management.
+Includes login, token refresh, logout, user info, registration, and user status management.
+"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel

@@ -1,3 +1,8 @@
+"""
+Rate limiting middleware for FastAPI using a sliding window algorithm.
+Tracks requests per client (user or IP) and enforces per-minute limits.
+Includes a background cleanup task to remove old request records.
+"""
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 import time
@@ -10,7 +15,11 @@ from app.core.config import settings
 logger = structlog.get_logger()
 
 class RateLimiterMiddleware:
-    """Rate limiting middleware using sliding window"""
+    """
+    Rate limiting middleware using a sliding window algorithm.
+    Tracks requests per client (user or IP) and enforces per-minute limits.
+    The background cleanup task should be started with start_cleanup_task() and stopped with stop_cleanup_task().
+    """
     
     def __init__(self):
         self.requests = defaultdict(list)
@@ -49,7 +58,6 @@ class RateLimiterMiddleware:
     
     def _get_client_id(self, request: Request) -> str:
         """Get client identifier for rate limiting"""
-        # Try to get user ID from token if authenticated
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             try:
@@ -60,13 +68,13 @@ class RateLimiterMiddleware:
                     return f"user:{token_data.user_id}"
             except Exception:
                 pass
-        
-        # Fallback to IP address
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
             return f"ip:{forwarded_for.split(',')[0].strip()}"
-        
-        return f"ip:{request.client.host}"
+        # Check if request.client is not None before accessing host
+        if request.client and request.client.host:
+            return f"ip:{request.client.host}"
+        return "ip:unknown"
     
     async def _is_allowed(self, client_id: str) -> bool:
         """Check if request is allowed based on rate limit"""
